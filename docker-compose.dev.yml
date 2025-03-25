@@ -1,0 +1,57 @@
+services:
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - mini-blog-app
+
+  api:
+    build:
+      context: ./Server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./Server/data/config.env
+    environment:
+      - NODE_ENV=development
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./Server:/app
+      - /app/node_modules
+    networks:
+      - mini-blog-app
+    depends_on:
+      - mongo
+    command: nodemon --legacy-watch server.js
+
+  client:
+    build:
+      context: ./Client/frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    env_file:
+      - ./Client/frontend/.env
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      - ./Client/frontend:/app
+      - /app/node_modules
+      - /app/public
+    networks:
+      - mini-blog-app
+    command: npm run dev -- --host 0.0.0.0 --port 5173
+    depends_on:
+      - api
+
+volumes:
+  mongo_data:
+
+networks:
+  mini-blog-app:
+    driver: bridge
